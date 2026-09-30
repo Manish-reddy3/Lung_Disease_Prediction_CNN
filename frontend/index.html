@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LungSight · Chest X-ray analysis</title>
+<meta name="description" content="AI-assisted chest X-ray classification. Educational and research use only.">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="#top" aria-label="LungSight home">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4v10M16 14c-2 2-3 3-5 3M16 14c2 2 3 3 5 3"/><path d="M12 12c-4 1-6 6-6 11 0 3 1 4 3 4 3 0 4-2 4-5v-8c0-1-.5-2-1-2zM20 12c4 1 6 6 6 11 0 3-1 4-3 4-3 0-4-2-4-5v-8c0-1 .5-2 1-2z"/></svg>
+    <span><strong>LungSight</strong><small>Chest X-ray analysis</small></span>
+  </a>
+  <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Toggle navigation"><span></span><span></span></button>
+  <nav id="nav" aria-label="Main">
+    <a href="#analysis">Analysis</a><a href="#how">How it works</a><a href="#about">About</a>
+  </nav>
+  <div class="status" id="status" role="status" aria-live="polite"><i></i><span id="statusText">Checking server</span></div>
+</header>
+
+<main id="top">
+<section class="hero">
+  <div class="hero-copy">
+    <p class="label">AI-assisted chest X-ray analysis</p>
+    <h1>Understand the image.<br>Not just the result.</h1>
+    <p class="lede">Upload a chest X-ray and receive an AI-assisted classification from our convolutional neural network.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="#analysis">Analyze X-ray</a>
+      <span class="muted">JPG, JPEG or PNG · Research use</span>
+    </div>
+  </div>
+  <figure class="lung-wrap">
+    <svg id="lung" viewBox="0 0 400 420" role="img" aria-label="Stylized anatomical illustration of lungs, slowly breathing">
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FB4C9"/><stop offset="1" stop-color="#4F7F9B"/></linearGradient>
+        <clipPath id="ribclip"><rect x="0" y="0" width="400" height="420"/></clipPath>
+      </defs>
+      <g id="ribs" fill="none" stroke="#9AA9B0" stroke-width="2" stroke-linecap="round" opacity=".55">
+        <path d="M200 70v250"/>
+        <path d="M200 110C150 100 90 120 62 170M200 110C250 100 310 120 338 170"/>
+        <path d="M200 150C140 142 70 170 48 230M200 150C260 142 330 170 352 230"/>
+        <path d="M200 190C135 185 62 220 48 280M200 190C265 185 338 220 352 280"/>
+        <path d="M200 230C140 228 75 262 70 320M200 230C260 228 325 262 330 320"/>
+      </g>
+      <g id="lungs">
+        <path id="lobeL" d="M188 120c-8 2-14 10-22 26-22 40-58 88-58 140 0 28 10 44 34 44 26 0 44-8 44-34V140c0-12-2-22-6-20z" fill="url(#lg)" opacity=".92"/>
+        <path id="lobeR" d="M212 120c8 2 14 10 22 26 22 40 58 88 58 140 0 28-10 44-34 44-26 0-44-8-44-34V140c0-12 2-22 6-20z" fill="url(#lg)" opacity=".92"/>
+        <g fill="none" stroke="#E9F1F4" stroke-width="1.6" stroke-linecap="round" opacity=".7">
+          <path d="M200 70v58M200 128l-28 40-14 50M200 128l28 40 14 50M172 168l-18 20M228 168l18 20M166 210l-16 34M234 210l16 34"/>
+        </g>
+      </g>
+      <path id="diaphragm" d="M70 352c40-26 90-34 130-34s90 8 130 34" fill="none" stroke="#14283F" stroke-width="2.2" stroke-linecap="round" opacity=".5"/>
+    </svg>
+    <figcaption><span class="label">Respiration</span><span class="phase" id="phase" aria-hidden="true">Inhale</span></figcaption>
+  </figure>
+</section>
+
+<section class="analysis" id="analysis" aria-labelledby="aTitle">
+  <div class="sec-head"><h2 id="aTitle">Chest X-ray analysis</h2><p class="muted">Upload a frontal chest X-ray to begin.</p></div>
+  <div class="workspace">
+    <div id="drop" class="drop" tabindex="0" role="button" aria-label="Upload chest X-ray. Press Enter or Space to browse files.">
+      <input id="fileInput" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+      <div id="dropEmpty" class="drop-empty">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 27V9M12 16l8-8 8 8M7 28v3a2 2 0 002 2h22a2 2 0 002-2v-3"/></svg>
+        <p class="drop-title">Drop your X-ray here</p>
+        <p class="muted">or browse from your computer</p>
+        <p class="label">JPG · JPEG · PNG</p>
+      </div>
+      <div id="dropPreview" class="drop-preview" hidden>
+        <div class="img-frame"><img id="previewImg" alt="Preview of the selected chest X-ray"></div>
+        <div class="file-meta"><div><p id="fileName" class="fname"></p><p id="fileSize" class="muted"></p></div>
+        <button type="button" id="removeBtn" class="btn ghost">Remove</button></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" id="analyzeBtn" class="btn primary" disabled><span class="spinner" hidden></span><span id="analyzeLabel">Analyze X-ray</span></button>
+    </div>
+    <p id="error" class="error" role="alert" hidden></p>
+
+    <section id="result" class="result" aria-live="polite" hidden>
+      <p class="label">Analysis result</p>
+      <p class="verdict" id="verdict"></p>
+      <dl class="metrics">
+        <div><dt>Prediction probability</dt><dd id="probText"></dd></div>
+        <div><dt>Confidence</dt><dd id="confText"></dd></div>
+      </dl>
+      <div class="scale" aria-hidden="true">
+        <div class="scale-labels"><span>NORMAL</span><span>PNEUMONIA</span></div>
+        <div class="track"><span class="mark" id="mark"></span></div>
+      </div>
+      <p id="explain" class="explain"></p>
+      <p class="notice">Not a medical diagnosis.</p>
+      <p class="muted small">This model is intended for educational and research use. Results should not be used as a substitute for professional medical evaluation.</p>
+      <button type="button" id="resetBtn" class="btn ghost">Analyze another X-ray</button>
+    </section>
+  </div>
+</section>
+
+<section class="how" id="how" aria-labelledby="hTitle">
+  <h2 id="hTitle">How it works</h2>
+  <ol class="steps">
+    <li><span class="num">01</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5M7 10l5-5 5 5M4 19h16"/></svg><h3>Upload</h3><p>Select a chest X-ray from your device.</p></li>
+    <li><span class="num">02</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 12c3-5 6-7 9-7s6 2 9 7c-3 5-6 7-9 7s-6-2-9-7z"/></svg><h3>Analyze</h3><p>The image is processed by the trained CNN model.</p></li>
+    <li><span class="num">03</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg><h3>Result</h3><p>The API returns the model's classification and confidence.</p></li>
+  </ol>
+  <dl class="tech">
+    <div><dt>Model</dt><dd>CNN</dd></div><div><dt>Input</dt><dd>224 × 224 RGB</dd></div>
+    <div><dt>Classes</dt><dd>NORMAL / PNEUMONIA</dd></div><div><dt>API</dt><dd>FastAPI</dd></div>
+    <div><dt>Status</dt><dd id="techStatus">Checking…</dd></div>
+  </dl>
+</section>
+</main>
+
+<footer id="about">
+  <div><strong>LungSight</strong><p>AI-assisted chest X-ray classification</p></div>
+  <div><p>Educational / Research Project</p><p>Not intended for clinical diagnosis.</p></div>
+  <div><p class="muted">FastAPI backend · CNN model</p></div>
+</footer>
+<script src="/static/script.js"></script>
+</body>
+</html>

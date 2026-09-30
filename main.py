@@ -1,201 +1,50 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from PIL import Image, UnidentifiedImageError
-
-import tensorflow as tf
-import numpy as np
-
+from pathlib import Path
 import io
-import os
 
+import numpy as np
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from PIL import Image
+from tensorflow import keras
 
-# --------------------------------------------------
-# APPLICATION
-# --------------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_DIR = BASE_DIR / "frontend"
+MODEL_PATH = BASE_DIR / "model" / "lung_disease_cnn.keras"
 
-app = FastAPI(
-    title="Lung Disease Prediction API",
-    description="CNN-based chest X-ray classification API",
-    version="1.0.0"
-)
+app = FastAPI(title="LungSight API")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+model = keras.models.load_model(MODEL_PATH)
 
-
-# --------------------------------------------------
-# PATHS
-# --------------------------------------------------
-
-BASE_DIR = os.path.dirname(
-    os.path.abspath(__file__)
-)
-
-MODEL_PATH = os.path.join(
-    BASE_DIR,
-    "model",
-    "lung_disease_cnn.keras"
-)
-
-# --------------------------------------------------
-# CONFIGURATION
-# --------------------------------------------------
-
-IMAGE_SIZE = (224, 224)
-
-CLASS_NAMES = {
-    0: "NORMAL",
-    1: "PNEUMONIA"
-}
-
-THRESHOLD = 0.5
-
-
-# --------------------------------------------------
-# LOAD MODEL
-# --------------------------------------------------
-
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(
-        f"Model not found: {MODEL_PATH}"
-    )
-
-model = tf.keras.models.load_model(
-    MODEL_PATH
-)
-
-
-# --------------------------------------------------
-# ROOT
-# --------------------------------------------------
-
-@app.get("/")
-def home():
-
-    return {
-        "message": "Lung Disease Prediction API",
-        "status": "running"
-    }
-
-
-# --------------------------------------------------
-# HEALTH CHECK
-# --------------------------------------------------
+# --- KEEP YOUR EXISTING PREPROCESSING IF IT DIFFERS ---------------------
+# Assumes: 224x224 RGB, pixels scaled to 0-1, single sigmoid output = P(PNEUMONIA).
+def preprocess(data: bytes) -> np.ndarray:
+    img = Image.open(io.BytesIO(data)).convert("RGB").resize((224, 224))
+    return np.expand_dims(np.asarray(img, dtype="float32") / 255.0, axis=0)
+# ------------------------------------------------------------------------
 
 @app.get("/health")
 def health():
-
-    return {
-        "status": "healthy",
-        "model_loaded": model is not None
-    }
-
-
-# --------------------------------------------------
-# PREDICTION
-# --------------------------------------------------
+    return {"status": "healthy", "model_loaded": model is not None}
 
 @app.post("/predict")
-async def predict(
-    file: UploadFile = File(...)
-):
-
-    allowed_types = {
-        "image/jpeg",
-        "image/png"
-    }
-
-    if file.content_type not in allowed_types:
-
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Only JPEG and PNG images "
-                "are supported."
-            )
-        )
-
-    contents = await file.read()
-
-    if not contents:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file is empty."
-        )
-
+async def predict(file: UploadFile = File(...)):
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
     try:
+        x = preprocess(data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image")
+    p = float(model.predict(x, verbose=0).ravel()[0])
+    label = "PNEUMONIA" if p >= 0.5 else "NORMAL"
+    return {"prediction": label, "probability": round(p, 4),
+            "confidence": round(max(p, 1 - p), 4)}
 
-        image = Image.open(
-            io.BytesIO(contents)
-        )
+# --- Frontend (registered last so /health, /predict and /docs keep working)
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
-        image = image.convert("RGB")
-
-    except (
-        UnidentifiedImageError,
-        OSError
-    ):
-
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid image file."
-        )
-
-    # Resize exactly like the Colab inference pipeline
-    image = image.resize(
-        IMAGE_SIZE
-    )
-
-    # Convert to NumPy
-    image_array = np.asarray(
-        image,
-        dtype=np.float32
-    )
-
-    # Add batch dimension
-    image_array = np.expand_dims(
-        image_array,
-        axis=0
-    )
-
-    # IMPORTANT:
-    # Do NOT divide by 255 here.
-    # The saved model contains Rescaling(1/255).
-
-    probability = float(
-        model.predict(
-            image_array,
-            verbose=0
-        )[0][0]
-    )
-
-    # Classification
-    if probability >= THRESHOLD:
-
-        class_id = 1
-
-    else:
-
-        class_id = 0
-
-    prediction = CLASS_NAMES[
-        class_id
-    ]
-
-    # Confidence
-    if class_id == 1:
-
-        confidence = probability
-
-    else:
-
-        confidence = 1.0 - probability
-
-    return {
-        "prediction": prediction,
-        "probability": round(
-            probability,
-            4
-        ),
-        "confidence": round(
-            confidence,
-            4
-        )
-    }
+@app.get("/", include_in_schema=False)
+def index():
+    return FileResponse(FRONTEND_DIR / "index.html")
