@@ -2,7 +2,7 @@
   "use strict";
 
   // Backend base URL. Use "" instead if FastAPI serves this frontend itself.
-  const API_URL = "https://farmerfriend-9fia.onrender.com";
+  const API_URL = "https://lung-disease-prediction-cnn.onrender.com";
   const $ = (id) => document.getElementById(id);
   const drop = $("drop"), fileInput = $("fileInput"), analyzeBtn = $("analyzeBtn");
   const errorBox = $("error"), result = $("result");
@@ -77,7 +77,7 @@
       let data;
       try { data = await res.json(); } catch { data = null; }
       if (!data || !["NORMAL", "PNEUMONIA"].includes(data.prediction) ||
-          typeof data.probability !== "number" || typeof data.confidence !== "number")
+        typeof data.probability !== "number" || typeof data.confidence !== "number")
         return showError("The prediction server returned an unexpected response.");
       showResult(data);
     } finally { setBusy(false); }
