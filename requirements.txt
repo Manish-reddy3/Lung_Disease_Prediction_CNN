@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+tensorflow
+numpy
+pillow
+python-multipart
+opencv-python-headless
+scikit-learn==1.6.1
+keras
